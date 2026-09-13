@@ -1,5 +1,5 @@
 {
-  "name": "codex-multi",
+  "name": "codex-multi-cli",
   "version": "0.1.0",
   "description": "Manage isolated Codex CLI API accounts and zsh shortcuts",
   "type": "module",

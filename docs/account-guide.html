@@ -164,7 +164,7 @@ type codex-a</code></pre>
     └── auth.json 或系统钥匙串凭据</code></pre>
 <h2>14. 使用 codex-multi 自动创建账号</h2>
 <p>本目录还包含一个可通过 npm 安装的命令行工具。要求 Node.js 18+，并且 <code>codex</code> 已在 PATH 中。</p>
-<pre><code>npm install -g codex-multi</code></pre>
+<pre><code>npm install -g codex-multi-cli</code></pre>
 <p>创建 API 账号。命令会隐藏输入 API key，写入对应 <code>CODEX_HOME</code>，生成 <code>config.toml</code>，并在 <code>~/.zshrc</code> 的托管区块中加入快捷命令：</p>
 <pre><code>codex-multi add api-b \
   --base-url https://host.example.com/v1 \

@@ -276,7 +276,7 @@ type codex-a
 本目录还包含一个可通过 npm 安装的命令行工具。要求 Node.js 18+，并且 `codex` 已在 PATH 中。
 
 ~~~zsh
-npm install -g codex-multi
+npm install -g codex-multi-cli
 ~~~
 
 创建 API 账号。命令会隐藏输入 API key，写入对应 `CODEX_HOME`，生成 `config.toml`，并在 `~/.zshrc` 的托管区块中加入快捷命令：

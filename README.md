@@ -7,7 +7,7 @@
 发布到 npm 后：
 
 ```zsh
-npm install -g codex-multi
+npm install -g codex-multi-cli
 ```
 
 本地开发安装：
