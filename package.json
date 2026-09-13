@@ -1,0 +1,17 @@
+{
+  "name": "codex-multi",
+  "version": "0.1.0",
+  "description": "Manage isolated Codex CLI API accounts and zsh shortcuts",
+  "type": "module",
+  "bin": {
+    "codex-multi": "bin/codex-multi.js"
+  },
+  "files": ["bin", "docs", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "check": "node --check bin/codex-multi.js"
+  },
+  "license": "MIT"
+}

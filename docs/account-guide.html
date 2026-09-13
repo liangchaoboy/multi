@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codex CLI 多账号切换使用指南</title>
+<style>
+:root{--ink:#1f2937;--muted:#5b6472;--line:#d9dee7;--panel:#f6f8fb;--code:#111827;--accent:#0f766e}
+*{box-sizing:border-box}body{margin:0;color:var(--ink);background:#fff;font:16px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:42px 24px 72px}h1{margin:0 0 12px;font-size:2.15rem;line-height:1.2}h2{margin:42px 0 14px;padding-bottom:7px;border-bottom:1px solid var(--line);font-size:1.45rem}h3{margin:28px 0 8px;font-size:1.08rem}p{margin:12px 0}.lead{color:var(--muted);font-size:1.05rem}
+.note{padding:14px 16px;margin:18px 0;border-left:4px solid var(--accent);background:#f0fdfa}pre{overflow-x:auto;margin:14px 0 18px;padding:15px 17px;border-radius:7px;background:var(--code);color:#f9fafb;font:14px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}code{padding:2px 5px;border-radius:4px;background:var(--panel);font:.92em ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}pre code{padding:0;background:transparent}
+table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:.94rem}th,td{padding:10px 11px;border:1px solid var(--line);vertical-align:top;text-align:left}th{background:var(--panel)}ul{padding-left:24px}.tree{white-space:pre}footer{margin-top:50px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.92rem}a{color:#075e54}
+@media(max-width:700px){main{padding:28px 16px 56px}h1{font-size:1.8rem}pre{font-size:12.5px}table{display:block;overflow-x:auto}th,td{min-width:150px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Codex CLI 多账号切换使用指南</h1>
+<p class="lead">适用于 macOS 上的 Codex CLI，同时管理一个 ChatGPT 登录账号、两个使用不同 <code>base_url</code> 的 API key，并通过 zsh 别名快速切换。</p>
+<div class="note">推荐用不同的 <code>CODEX_HOME</code> 隔离认证、配置和会话：ChatGPT → <code>~/.codex-accounts/chatgpt</code>，API A → <code>~/.codex-accounts/api-a</code>，API B → <code>~/.codex-accounts/api-b</code>。</div>
+
+<h2>1. 检查环境</h2>
+<pre><code>codex --version
+echo "$SHELL"</code></pre>
+<p>本文按 zsh 编写，iTerm2 和 Warp 都适用。</p>
+
+<h2>2. 创建目录</h2>
+<pre><code>mkdir -p "$HOME/.codex-accounts/chatgpt"
+mkdir -p "$HOME/.codex-accounts/api-a"
+mkdir -p "$HOME/.codex-accounts/api-b"
+
+chmod 700 "$HOME/.codex-accounts/chatgpt"
+chmod 700 "$HOME/.codex-accounts/api-a"
+chmod 700 "$HOME/.codex-accounts/api-b"</code></pre>
+<p>如果现有 ChatGPT 登录已经在 <code>~/.codex</code>，可以继续使用，不必迁移。</p>
+
+<h2>3. 登录 ChatGPT</h2>
+<pre><code>CODEX_HOME="$HOME/.codex-accounts/chatgpt" codex login
+CODEX_HOME="$HOME/.codex-accounts/chatgpt" codex login status</code></pre>
+<p>ChatGPT 配置不需要手动设置 provider 或 <code>base_url</code>。如果现有登录在 <code>~/.codex</code>，验证时使用 <code>CODEX_HOME="$HOME/.codex" codex login status</code>。</p>
+
+<h2>4. 配置 API A</h2>
+<pre><code>nano "$HOME/.codex-accounts/api-a/config.toml"</code></pre>
+<pre><code>model_provider = "api_a"
+model = "供应商提供的模型名称"
+model_reasoning_effort = "high"
+personality = "pragmatic"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[model_providers.api_a]
+name = "API A"
+base_url = "https://api-a.example.com/v1"
+wire_api = "responses"
+requires_openai_auth = true</code></pre>
+<p><code>base_url</code> 填 API 根地址，例如 <code>https://host.example.com/v1</code>，不要追加 <code>/responses</code>。</p>
+
+<h2>5. 配置 API B</h2>
+<pre><code>nano "$HOME/.codex-accounts/api-b/config.toml"</code></pre>
+<pre><code>model_provider = "api_b"
+model = "供应商提供的模型名称"
+model_reasoning_effort = "high"
+personality = "pragmatic"
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[model_providers.api_b]
+name = "API B"
+base_url = "https://api-b.example.com/v1"
+wire_api = "responses"
+requires_openai_auth = true</code></pre>
+<p>API A 和 API B 的 <code>base_url</code> 可以完全不同，由各自的 provider 段决定。</p>
+
+<h2>6. 配置字段说明</h2>
+<table><thead><tr><th>字段</th><th>位置</th><th>推荐值/示例</th><th>说明</th></tr></thead><tbody>
+<tr><td><code>model_provider</code></td><td>顶层</td><td><code>"api_a"</code></td><td>选择 provider ID，必须与 provider 段名称一致。ChatGPT 通常不需设置。</td></tr>
+<tr><td><code>model</code></td><td>顶层</td><td>供应商模型名</td><td>必须是该服务商实际支持的模型。</td></tr>
+<tr><td><code>model_reasoning_effort</code></td><td>顶层</td><td><code>"medium"</code> / <code>"high"</code></td><td>推理强度；high 适合复杂编码，medium 通常更快。</td></tr>
+<tr><td><code>personality</code></td><td>顶层</td><td><code>"pragmatic"</code></td><td>交互风格，不影响鉴权和地址。</td></tr>
+<tr><td><code>approval_policy</code></td><td>顶层</td><td><code>"on-request"</code></td><td>命令执行审批策略，推荐按需审批。</td></tr>
+<tr><td><code>sandbox_mode</code></td><td>顶层</td><td><code>"workspace-write"</code></td><td>shell 沙箱权限，编码项目通常使用工作区可写。</td></tr>
+<tr><td><code>name</code></td><td>provider 段</td><td><code>"API A"</code></td><td>provider 显示名称，便于识别，不是 key。</td></tr>
+<tr><td><code>base_url</code></td><td>provider 段</td><td><code>"https://host.example.com/v1"</code></td><td>API 根地址，不要写 <code>/responses</code>。</td></tr>
+<tr><td><code>wire_api</code></td><td>provider 段</td><td><code>"responses"</code></td><td>请求协议，服务商需要兼容 Responses API。</td></tr>
+<tr><td><code>requires_openai_auth</code></td><td>provider 段</td><td><code>true</code></td><td>使用 Codex 的 OpenAI 风格认证存储，适配 <code>codex login --with-api-key</code>。</td></tr>
+<tr><td><code>env_key</code></td><td>provider 段</td><td>可选</td><td>只有服务商要求从环境变量读取 key 时才设置。</td></tr>
+<tr><td><code>service_tier</code></td><td>顶层</td><td>按服务商支持情况</td><td>第三方 provider 未必支持，不要盲目复制 fast。</td></tr>
+<tr><td><code>check_for_update_on_startup</code></td><td>顶层</td><td><code>true</code></td><td>启动时检查更新，不影响模型请求。</td></tr>
+<tr><td><code>cli_auth_credentials_store</code></td><td>顶层</td><td>通常省略</td><td>凭据存储方式，省略时使用当前版本默认行为。</td></tr>
+<tr><td><code>[features]</code></td><td>表</td><td>按需开启</td><td>功能开关，优先使用稳定默认值。</td></tr>
+</tbody></table>
+<p>最小可用配置是 <code>model_provider</code>、<code>model</code>、provider 段的 <code>base_url</code>、<code>wire_api</code> 和 <code>requires_openai_auth</code>。</p>
+
+<h2>7. 安全录入 API key</h2>
+<pre><code>read -rs "CODEX_KEY?API key A: "
+printf '\n'
+printf '%s' "$CODEX_KEY" |
+  CODEX_HOME="$HOME/.codex-accounts/api-a" codex login --with-api-key
+unset CODEX_KEY</code></pre>
+<pre><code>read -rs "CODEX_KEY?API key B: "
+printf '\n'
+printf '%s' "$CODEX_KEY" |
+  CODEX_HOME="$HOME/.codex-accounts/api-b" codex login --with-api-key
+unset CODEX_KEY</code></pre>
+<p>输入时不会回显字符，完成后按 Enter。凭据通常在对应目录的 <code>auth.json</code>，也可能由 macOS Keychain 管理。不要把 key 写入命令历史、配置文件或文档。</p>
+<pre><code>CODEX_HOME="$HOME/.codex-accounts/api-a" codex login status
+CODEX_HOME="$HOME/.codex-accounts/api-b" codex login status</code></pre>
+
+<h2>8. 设置别名</h2>
+<pre><code>nano "$HOME/.zshrc"</code></pre>
+<pre><code>alias codex-chatgpt='CODEX_HOME="$HOME/.codex-accounts/chatgpt" codex'
+alias codex-a='CODEX_HOME="$HOME/.codex-accounts/api-a" codex'
+alias codex-b='CODEX_HOME="$HOME/.codex-accounts/api-b" codex'</code></pre>
+<p>如果 ChatGPT 仍在默认目录，第一行改为 <code>alias codex-chatgpt='CODEX_HOME="$HOME/.codex" codex'</code>。</p>
+<pre><code>source "$HOME/.zshrc"
+type codex-chatgpt
+type codex-a
+type codex-b</code></pre>
+
+<h2>9. 日常切换</h2>
+<pre><code>codex-chatgpt
+codex-a
+codex-b
+
+codex-a exec "检查当前项目"
+codex-b exec "运行测试并总结结果"
+
+codex-chatgpt login status
+codex-a login status
+codex-b login status</code></pre>
+<p>三个窗口可以同时运行不同账号，互不覆盖认证和会话。</p>
+
+<h2>10. Base URL 兼容性</h2>
+<p>配置 <code>wire_api = "responses"</code> 后，服务商至少要能处理：</p>
+<pre><code>POST {base_url}/responses</code></pre>
+<p>如果服务商只支持 <code>/chat/completions</code>，仅修改 <code>base_url</code> 通常不够，应使用其 Codex/Responses 兼容入口或兼容层。</p>
+
+<h2>11. ChatGPT 客户端与终端</h2>
+<ul><li>ChatGPT macOS/Web 客户端只显示它自身登录的 ChatGPT 账号。</li><li>API A、API B 不会出现在 ChatGPT 客户端账号切换菜单。</li><li>API 用量和费用归属于对应 API key 的平台账号。</li><li>CLI 别名不会被图形客户端识别。</li></ul>
+<p>iTerm2 和 Warp 都能使用这些别名。已打开的窗口执行：</p>
+<pre><code>source "$HOME/.zshrc"</code></pre>
+
+<h2>12. 故障排查</h2>
+<h3>401 或 403</h3><p>检查 key 有效期、权限和服务商账号。</p>
+<h3>404</h3><p>检查 <code>base_url</code> 是否为 API 根地址，以及 <code>/responses</code> 路径是否存在。</p>
+<h3>模型不存在</h3><p>检查 <code>model</code> 是否是服务商实际支持的名称。</p>
+<h3>显示错误账号</h3><pre><code>CODEX_HOME="$HOME/.codex-accounts/api-b" codex login status
+alias codex-b</code></pre>
+<h3>别名不存在</h3><pre><code>source "$HOME/.zshrc"
+type codex-a</code></pre>
+
+<h2>13. 最终目录结构</h2>
+<pre class="tree"><code>~/.codex-accounts/
+├── chatgpt/
+│   ├── config.toml
+│   └── auth.json 或系统钥匙串凭据
+├── api-a/
+│   ├── config.toml
+│   └── auth.json 或系统钥匙串凭据
+└── api-b/
+    ├── config.toml
+    └── auth.json 或系统钥匙串凭据</code></pre>
+<h2>14. 使用 codex-multi 自动创建账号</h2>
+<p>本目录还包含一个可通过 npm 安装的命令行工具。要求 Node.js 18+，并且 <code>codex</code> 已在 PATH 中。</p>
+<pre><code>npm install -g codex-multi</code></pre>
+<p>创建 API 账号。命令会隐藏输入 API key，写入对应 <code>CODEX_HOME</code>，生成 <code>config.toml</code>，并在 <code>~/.zshrc</code> 的托管区块中加入快捷命令：</p>
+<pre><code>codex-multi add api-b \
+  --base-url https://host.example.com/v1 \
+  --model your-model-id \
+  --shortcut codex-b</code></pre>
+<p>也可以通过 <code>--api-key-env API_B_KEY</code> 从环境变量读取 key。管理账号：</p>
+<pre><code>codex-multi list
+codex-multi path api-b
+codex-multi remove api-b</code></pre>
+<p><code>remove</code> 只移除托管快捷命令，不删除账号目录或认证凭据。</p>
+<footer>参考：<a href="https://developers.openai.com/codex/auth">OpenAI Codex Authentication</a> · <a href="https://developers.openai.com/codex/config-reference/">OpenAI Codex Configuration Reference</a></footer>
+</main>
+</body>
+</html>
